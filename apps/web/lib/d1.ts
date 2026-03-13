@@ -5,30 +5,88 @@ function db() {
   return getEnv().DB;
 }
 
-export async function listStudents(): Promise<Student[]> {
-  const result = await db().prepare(`
-    SELECT id, name, dominant_hand as dominantHand, level, handicap, notes,
+type StudentRow = Student & { userId?: string | null; coachUserId?: string | null };
+
+type Scope = { role: "user" | "pro" | "admin"; userId: string };
+
+function mapStudent(row: any): Student {
+  return {
+    id: row.id,
+    name: row.name,
+    dominantHand: row.dominantHand,
+    level: row.level,
+    handicap: Number(row.handicap ?? 0),
+    notes: row.notes ?? "",
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+
+export async function listStudents(scope?: Scope): Promise<Student[]> {
+  let sql = `
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name,
+           dominant_hand as dominantHand, level, handicap, notes,
            created_at as createdAt, updated_at as updatedAt
-    FROM students
-    ORDER BY updated_at DESC
-  `).all();
-  return (result.results ?? []) as Student[];
+    FROM students`;
+  const binds: string[] = [];
+  if (scope?.role === "user") {
+    sql += ` WHERE user_id = ?1`;
+    binds.push(scope.userId);
+  } else if (scope?.role === "pro") {
+    sql += ` WHERE coach_user_id = ?1`;
+    binds.push(scope.userId);
+  }
+  sql += ` ORDER BY updated_at DESC`;
+  const result = binds.length ? await db().prepare(sql).bind(...binds).all() : await db().prepare(sql).all();
+  return ((result.results ?? []) as StudentRow[]).map(mapStudent);
 }
 
 export async function getStudent(id: string): Promise<Student | null> {
   const row = await db().prepare(`
-    SELECT id, name, dominant_hand as dominantHand, level, handicap, notes,
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name,
+           dominant_hand as dominantHand, level, handicap, notes,
            created_at as createdAt, updated_at as updatedAt
     FROM students WHERE id = ?1 LIMIT 1
   `).bind(id).first();
-  return (row ?? null) as Student | null;
+  return row ? mapStudent(row as StudentRow) : null;
 }
 
-export async function upsertStudent(student: Student): Promise<void> {
+export async function getStudentWithOwnership(id: string): Promise<StudentRow | null> {
+  const row = await db().prepare(`
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name,
+           dominant_hand as dominantHand, level, handicap, notes,
+           created_at as createdAt, updated_at as updatedAt
+    FROM students WHERE id = ?1 LIMIT 1
+  `).bind(id).first();
+  return (row ?? null) as StudentRow | null;
+}
+
+export async function getStudentForScope(id: string, scope?: Scope): Promise<Student | null> {
+  const row = await getStudentWithOwnership(id);
+  if (!row) return null;
+  if (!scope || scope.role === "admin") return mapStudent(row);
+  if (scope.role === "user" && row.userId === scope.userId) return mapStudent(row);
+  if (scope.role === "pro" && row.coachUserId === scope.userId) return mapStudent(row);
+  return null;
+}
+
+export async function findStudentByUserId(userId: string): Promise<Student | null> {
+  const row = await db().prepare(`
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name,
+           dominant_hand as dominantHand, level, handicap, notes,
+           created_at as createdAt, updated_at as updatedAt
+    FROM students WHERE user_id = ?1 ORDER BY updated_at DESC LIMIT 1
+  `).bind(userId).first();
+  return row ? mapStudent(row as StudentRow) : null;
+}
+
+export async function upsertStudent(student: Student & { userId?: string | null; coachUserId?: string | null }): Promise<void> {
   await db().prepare(`
-    INSERT INTO students (id, name, dominant_hand, level, handicap, notes, created_at, updated_at)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+    INSERT INTO students (id, user_id, coach_user_id, name, dominant_hand, level, handicap, notes, created_at, updated_at)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
     ON CONFLICT(id) DO UPDATE SET
+      user_id = excluded.user_id,
+      coach_user_id = excluded.coach_user_id,
       name = excluded.name,
       dominant_hand = excluded.dominant_hand,
       level = excluded.level,
@@ -37,6 +95,8 @@ export async function upsertStudent(student: Student): Promise<void> {
       updated_at = excluded.updated_at
   `).bind(
     student.id,
+    student.userId ?? null,
+    student.coachUserId ?? null,
     student.name,
     student.dominantHand,
     student.level,
@@ -84,6 +144,17 @@ export async function getSession(id: string): Promise<SessionRecord | null> {
   return (row ?? null) as SessionRecord | null;
 }
 
+export async function getSessionForScope(id: string, scope?: Scope): Promise<SessionRecord | null> {
+  const session = await getSession(id);
+  if (!session) return null;
+  const student = await getStudentWithOwnership(session.studentId);
+  if (!student) return null;
+  if (!scope || scope.role === "admin") return session;
+  if (scope.role === "user" && student.userId === scope.userId) return session;
+  if (scope.role === "pro" && student.coachUserId === scope.userId) return session;
+  return null;
+}
+
 export async function writeAnalysis(result: AnalysisResult): Promise<void> {
   const now = new Date().toISOString();
   await db().batch([
@@ -123,7 +194,8 @@ export async function writeAnalysis(result: AnalysisResult): Promise<void> {
     db().prepare(`DELETE FROM reports WHERE session_id = ?1`).bind(result.sessionId),
     db().prepare(`DELETE FROM training_plans WHERE session_id = ?1`).bind(result.sessionId),
     db().prepare(`DELETE FROM metrics WHERE session_id = ?1`).bind(result.sessionId),
-    db().prepare(`UPDATE sessions SET status = 'completed', updated_at = ?1 WHERE id = ?2`).bind(now, result.sessionId)
+    db().prepare(`UPDATE sessions SET status = ?1, updated_at = ?2, completed_at = CASE WHEN ?1 = 'completed' THEN ?2 ELSE completed_at END WHERE id = ?3`)
+      .bind(result.mode === 'deep' ? 'completed' : 'analyzing-light', now, result.sessionId)
   ]);
 
   for (const frame of result.keyframes) {
@@ -161,9 +233,9 @@ export async function writeAnalysis(result: AnalysisResult): Promise<void> {
 
   for (const issue of result.issues) {
     await db().prepare(`
-      INSERT INTO issues (session_id, code, severity, title_zh, title_en, detail_zh, detail_en)
-      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-    `).bind(result.sessionId, issue.code, issue.severity, issue.titleZh, issue.titleEn, issue.detailZh, issue.detailEn).run();
+      INSERT INTO issues (session_id, code, severity, phase, title_zh, title_en, detail_zh, detail_en, tip_short)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+    `).bind(result.sessionId, issue.code, issue.severity, null, issue.titleZh, issue.titleEn, issue.detailZh, issue.detailEn, null).run();
   }
 
   await db().batch([
@@ -228,32 +300,40 @@ export async function getAnalysis(sessionId: string): Promise<AnalysisResult | n
   };
 }
 
-export async function listHistory(studentId?: string): Promise<Array<SessionRecord & { score: number | null; studentName?: string | null }>> {
-  const sql = studentId
-    ? `SELECT s.id, s.student_id as studentId, s.source_type as sourceType, s.status, s.video_key as videoKey, s.share_key as shareKey,
-         s.created_at as createdAt, s.updated_at as updatedAt, a.score, st.name as studentName
+export async function listHistory(studentId?: string, scope?: Scope): Promise<Array<SessionRecord & { score: number | null; studentName?: string | null }>> {
+  let sql = `SELECT s.id, s.student_id as studentId, s.source_type as sourceType, s.status, s.video_key as videoKey, s.share_key as shareKey,
+         s.created_at as createdAt, s.updated_at as updatedAt, COALESCE(a.score, s.light_score, s.final_score) as score, st.name as studentName
        FROM sessions s
        JOIN students st ON st.id = s.student_id
-       LEFT JOIN analysis_results a ON a.session_id = s.id
-       WHERE s.student_id = ?1
-       ORDER BY s.created_at DESC`
-    : `SELECT s.id, s.student_id as studentId, s.source_type as sourceType, s.status, s.video_key as videoKey, s.share_key as shareKey,
-         s.created_at as createdAt, s.updated_at as updatedAt, a.score, st.name as studentName
-       FROM sessions s
-       JOIN students st ON st.id = s.student_id
-       LEFT JOIN analysis_results a ON a.session_id = s.id
-       ORDER BY s.created_at DESC`;
+       LEFT JOIN analysis_results a ON a.session_id = s.id`;
+  const binds: string[] = [];
+  const clauses: string[] = [];
+  if (studentId) {
+    clauses.push(`s.student_id = ?${binds.length + 1}`);
+    binds.push(studentId);
+  }
+  if (scope?.role === 'user') {
+    clauses.push(`st.user_id = ?${binds.length + 1}`);
+    binds.push(scope.userId);
+  } else if (scope?.role === 'pro') {
+    clauses.push(`st.coach_user_id = ?${binds.length + 1}`);
+    binds.push(scope.userId);
+  }
+  if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
+  sql += ` ORDER BY s.created_at DESC`;
   const stmt = db().prepare(sql);
-  const result = studentId ? await stmt.bind(studentId).all() : await stmt.all();
+  const result = binds.length ? await stmt.bind(...binds).all() : await stmt.all();
   return (result.results ?? []) as Array<SessionRecord & { score: number | null; studentName?: string | null }>;
 }
 
-export async function getGrowth(studentId: string): Promise<GrowthPoint[]> {
+export async function getGrowth(studentId: string, scope?: Scope): Promise<GrowthPoint[]> {
+  const student = await getStudentForScope(studentId, scope);
+  if (!student) return [];
   const result = await db().prepare(`
     SELECT s.created_at as createdAt, a.score, a.tempo_ratio as tempoRatio,
            (SELECT COUNT(*) FROM issues i WHERE i.session_id = s.id) as issueCount
     FROM sessions s JOIN analysis_results a ON a.session_id = s.id
-    WHERE s.student_id = ?1
+    WHERE s.student_id = ?1 AND a.mode = 'deep'
     ORDER BY s.created_at ASC
   `).bind(studentId).all();
   return (result.results ?? []) as GrowthPoint[];

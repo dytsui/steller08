@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,15 +9,12 @@ import type { AnalysisSource, Student } from "@/lib/types";
 import { getCurrentStudentId, setCurrentStudentId, subscribeCurrentStudent } from "@/lib/current-student";
 import { runVideoQuickScan } from "@/lib/client/video-quick-scan";
 
-const screenHints = [
-  "完整拍入屏幕边框",
-  "减少环境反光",
-  "别让拍摄设备晃动",
-  "保证人物挥杆区域完整可见"
-];
+const screenHints = ["完整拍入屏幕边框", "减少环境反光", "别让拍摄设备晃动", "保证人物挥杆区域完整可见"];
 
 export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedStudentId = searchParams.get('studentId') ?? '';
   const [students, setStudents] = useState<Student[]>([]);
   const [studentId, setStudentId] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -32,12 +29,12 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
       const next = d.students ?? [];
       setStudents(next);
       const stored = getCurrentStudentId();
-      const usable = next.find((student: Student) => student.id === stored)?.id ?? next[0]?.id ?? "";
+      const usable = next.find((student: Student) => student.id === preselectedStudentId)?.id ?? next.find((student: Student) => student.id === stored)?.id ?? next[0]?.id ?? "";
       setStudentId(usable);
       if (usable) setCurrentStudentId(usable);
     });
     return subscribeCurrentStudent((id) => setStudentId(id));
-  }, []);
+  }, [preselectedStudentId]);
 
   useEffect(() => {
     if (!file) {
@@ -61,7 +58,7 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
       setError("");
       setBusy(true);
       setProgress(4);
-      setStatus("正在创建 session");
+      setStatus("正在创建分析任务");
 
       const fd = new FormData();
       fd.append("file", file);
@@ -72,26 +69,20 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
       const { session } = await sessionRes.json();
 
       setProgress(18);
-      setStatus("浏览器端真实首扫中");
+      setStatus("正在读取视频并生成首扫");
       const snapshot = await runVideoQuickScan(file, sourceType);
 
       setProgress(46);
-      setStatus("正在写入轻度分析结果");
+      setStatus("正在写入快速结果");
       const lightRes = await fetch("/api/analyze/light", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: session.id,
-          studentId,
-          sourceType,
-          durationMs: snapshot.durationMs,
-          snapshot
-        })
+        body: JSON.stringify({ sessionId: session.id, studentId, sourceType, durationMs: snapshot.durationMs, snapshot })
       });
       if (!lightRes.ok) throw new Error(await lightRes.text());
 
       setProgress(72);
-      setStatus("Render 深度分析中");
+      setStatus("正在生成正式分析报告");
       const deepRes = await fetch("/api/analyze/deep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,16 +105,7 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
       <Card>
         <div className="stack">
           <div className="video-shell" style={{ minHeight: "52vh" }}>
-            {preview ? (
-              <video src={preview} controls playsInline />
-            ) : (
-              <div className="video-shell-placeholder">
-                <div>
-                  <strong>选择视频后会在这里预览</strong>
-                  <div className="muted">支持普通上传与 Screen Mode 上传。</div>
-                </div>
-              </div>
-            )}
+            {preview ? <video src={preview} controls playsInline /> : <div className="video-shell-placeholder"><div><strong>选择视频后会在这里预览</strong><div className="muted">支持普通上传与 Screen Mode 上传。</div></div></div>}
           </div>
 
           <div className="grid-2">
@@ -136,10 +118,7 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
 
           <ProgressBar value={progress} />
           <div className="surface">
-            <div className="surface-title-row">
-              <strong>当前状态</strong>
-              <span className="badge">{progress}%</span>
-            </div>
+            <div className="surface-title-row"><strong>当前状态</strong><span className="badge">{progress}%</span></div>
             <div className="muted">{status}</div>
             {file ? <div className="muted">文件：{file.name}</div> : null}
             {error ? <div className="status-text-danger">错误：{error}</div> : null}
@@ -147,7 +126,7 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
 
           <div className="action-strip">
             <Button tone="primary" disabled={busy || !file || !studentId} onClick={start}>{busy ? "分析中…" : screenMode ? "开始 Screen Mode 分析" : "开始分析"}</Button>
-            <Button onClick={() => { setFile(null); setError(""); setProgress(0); setStatus("准备中"); }} disabled={busy}>重置</Button>
+            <Button onClick={() => { setFile(null); setError(""); setProgress(0); setStatus("准备中"); setBusy(false); }} disabled={busy}>重置</Button>
           </div>
         </div>
       </Card>
@@ -155,16 +134,10 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
       <div className="stack">
         <Card>
           <div className="stack">
-            <div>
-              <span className="kicker">upload flow</span>
-              <h2 className="section-title">上传后执行顺序</h2>
-            </div>
+            <div><span className="kicker">upload flow</span><h2 className="section-title">上传后执行顺序</h2></div>
             <div className="timeline-grid">
-              {["写 R2 视频", "创建 D1 session", "浏览器首扫", "写轻度分析", "Render 深分析", "分析页跳转"].map((item, index) => (
-                <div key={item} className="timeline-card">
-                  <span className="badge badge-accent">0{index + 1}</span>
-                  <strong>{item}</strong>
-                </div>
+              {["保存视频", "创建分析任务", "浏览器首扫", "写入快速结果", "正式分析", "跳转结果页"].map((item, index) => (
+                <div key={item} className="timeline-card"><span className="badge badge-accent">0{index + 1}</span><strong>{item}</strong></div>
               ))}
             </div>
           </div>
@@ -172,10 +145,7 @@ export function UploadWorkflow({ screenMode }: { screenMode: boolean }) {
 
         <Card>
           <div className="stack">
-            <div>
-              <span className="kicker">quality guide</span>
-              <h2 className="section-title">{screenMode ? "Screen Mode 质量建议" : "普通上传建议"}</h2>
-            </div>
+            <div><span className="kicker">quality guide</span><h2 className="section-title">{screenMode ? "Screen Mode 建议" : "普通上传建议"}</h2></div>
             <ul className="list-plain">
               {(screenMode ? screenHints : ["完整拍到头部与脚部", "镜头尽量固定", "确保挥杆动作完整", "避免逆光和拖影"]).map((item) => (
                 <li key={item} className="news-link">{item}</li>

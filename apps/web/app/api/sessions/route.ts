@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
-import { createSession, getSession } from "@/lib/d1";
+import { getCurrentSessionPayload } from '@/lib/auth';
+import { createSession, getSession, getStudentForScope } from "@/lib/d1";
 import { makeVideoKey, uploadMedia } from "@/lib/r2";
 import { makeId } from "@/lib/utils";
 import type { AnalysisSource, SessionRecord } from "@/lib/types";
 
+function scopeFromPayload(payload: Awaited<ReturnType<typeof getCurrentSessionPayload>>) {
+  if (!payload) return null;
+  if (payload.role === 'admin') return { role: 'admin' as const, userId: payload.userId };
+  if (payload.role === 'pro') return { role: 'pro' as const, userId: payload.userId };
+  return { role: 'user' as const, userId: payload.userId };
+}
+
 export async function POST(request: Request) {
+  const payload = await getCurrentSessionPayload();
+  const scope = scopeFromPayload(payload);
+  if (!scope) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const studentId = String(formData.get("studentId") ?? "");
@@ -13,6 +24,8 @@ export async function POST(request: Request) {
   if (!file || !studentId) {
     return NextResponse.json({ error: "missing_file_or_student" }, { status: 400 });
   }
+  const student = await getStudentForScope(studentId, scope);
+  if (!student) return NextResponse.json({ error: 'student_forbidden' }, { status: 403 });
 
   const sessionId = makeId("ses");
   const videoKey = makeVideoKey(sessionId, file.name || "swing.mp4");

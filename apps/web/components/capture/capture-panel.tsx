@@ -11,7 +11,7 @@ function toSourceType(screenMode: boolean): AnalysisSource {
   return screenMode ? "screen-camera" : "camera";
 }
 
-const flowHints = ["摄像头接通", "姿态稳定", "开始录制", "快速首扫", "Render 深分析"];
+const flowHints = ["摄像头接通", "姿态稳定", "开始录制", "快速首扫", "正式分析"];
 
 export function CapturePanel({ screenMode }: { screenMode: boolean }) {
   const sourceType = useMemo(() => toSourceType(screenMode), [screenMode]);
@@ -22,6 +22,7 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
   const [recording, setRecording] = useState(false);
   const [status, setStatus] = useState("准备开始");
   const [error, setError] = useState("");
+  const [showAllHud, setShowAllHud] = useState(false);
 
   async function startRecording() {
     const stream = videoRef.current?.srcObject as MediaStream | null;
@@ -55,7 +56,7 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
       return;
     }
     setBusy(true);
-    setStatus("正在保存 session");
+    setStatus("正在保存视频");
     const stopPromise = new Promise<Blob>((resolve) => {
       recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: "video/webm" }));
     });
@@ -65,7 +66,7 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
 
     try {
       const studentId = getCurrentStudentId();
-      if (!studentId) throw new Error("请先在学员页设定当前学员。");
+      if (!studentId) throw new Error("请先设置当前学员或当前档案。");
 
       const formData = new FormData();
       formData.append("studentId", studentId);
@@ -76,7 +77,7 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
       if (!sessionRes.ok) throw new Error(await sessionRes.text());
       const { session } = await sessionRes.json();
 
-      setStatus("正在进行快速分析");
+      setStatus("正在生成快速首扫");
       const lightRes = await fetch("/api/analyze/light", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,7 +91,7 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
       });
       if (!lightRes.ok) throw new Error(await lightRes.text());
 
-      setStatus("正在进行深度分析");
+      setStatus("正在生成正式分析");
       const deepRes = await fetch("/api/analyze/deep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,58 +107,51 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
     }
   }
 
+  const primaryMetrics = metrics.slice(0, 4);
+  const expandedMetrics = showAllHud ? metrics : primaryMetrics;
+
   return (
     <div className="detail-grid">
       <div className="stack">
-        <div className="video-shell">
+        <div className="video-shell capture-shell">
           <video ref={videoRef} autoPlay muted playsInline />
           <canvas ref={overlayRef} className="overlay-canvas" />
           <div className="grid-overlay" />
-          <div className="hud-shell">
-            <div className="hud-metrics">
-              {metrics.map((metric) => (
-                <div key={metric.label} className="metric-chip">
+          <div className="hud-shell hud-shell-faded">
+            <div className="hud-topbar">
+              <div>
+                <strong>{phase.toUpperCase()}</strong>
+                <div className="muted">{confidenceText}</div>
+              </div>
+              <button type="button" className="hud-more-button" onClick={() => setShowAllHud((value: boolean) => !value)}>
+                {showAllHud ? '收起' : '查看更多'}
+              </button>
+            </div>
+            <div className={`hud-metrics ${showAllHud ? 'hud-metrics-expanded' : ''}`}>
+              {expandedMetrics.map((metric, index) => (
+                <div key={metric.label} className={`metric-chip metric-chip-soft ${index < 4 ? 'metric-chip-primary' : 'metric-chip-secondary'}`}>
                   <div className="muted">{metric.label}</div>
                   <strong>{metric.value}</strong>
-                  <div className="muted">参考 {metric.target}</div>
+                  <div className="metric-target">{metric.target}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <Card>
-          <div className="capture-actions">
-            <Button tone="primary" disabled={!streamReady || !snapshotReady || recording || busy} onClick={startRecording}>开始录制</Button>
-            <Button disabled={!recording || busy} onClick={stopRecording}>停止并分析</Button>
-          </div>
-        </Card>
-      </div>
-
-      <div className="stack">
-        <Card>
-          <div className="stack">
-            <div>
-              <span className="kicker">capture status</span>
-              <h2 className="section-title">实时状态面板</h2>
-            </div>
-            <div className="status-list">
-              <div className="status-card"><strong>模式</strong><div className="muted">{screenMode ? "Screen Mode 实拍" : "普通实拍"}</div></div>
-              <div className="status-card"><strong>摄像头</strong><div className={streamReady ? "status-text-success" : "status-text-danger"}>{streamReady ? "已连接" : "未连接"}</div></div>
-              <div className="status-card"><strong>姿态模型</strong><div className={poseReady ? "status-text-success" : "status-text-danger"}>{poseReady ? confidenceText : "正在加载姿态模型"}</div></div>
-              <div className="status-card"><strong>动作阶段</strong><div className="muted">{phase}</div></div>
-              <div className="status-card"><strong>链路进度</strong><div className="muted">{status}</div></div>
-              {!snapshotReady ? <div className="empty-state">等待首个真实骨架快照后才允许提交分析。</div> : null}
-              {error ? <div className="empty-state status-text-danger">错误：{error}</div> : null}
-            </div>
-          </div>
-        </Card>
+        <div className="action-strip">
+          {!recording ? <Button tone="primary" onClick={startRecording} disabled={busy || !streamReady || !poseReady}>开始录制</Button> : <Button tone="primary" onClick={stopRecording} disabled={busy}>结束并分析</Button>}
+          <Button onClick={() => setShowAllHud((value: boolean) => !value)}>{showAllHud ? '仅看 4 项' : '查看 8 项'}</Button>
+        </div>
 
         <Card>
           <div className="stack">
-            <div>
-              <span className="kicker">operation flow</span>
-              <h2 className="section-title">录制后会发生什么</h2>
+            <div className="surface-title-row">
+              <div>
+                <span className="kicker">capture status</span>
+                <h2 className="section-title">录制状态</h2>
+              </div>
+              <span className="badge">{recording ? '录制中' : streamReady ? '已就绪' : '等待中'}</span>
             </div>
             <div className="timeline-grid">
               {flowHints.map((item, index) => (
@@ -167,7 +161,28 @@ export function CapturePanel({ screenMode }: { screenMode: boolean }) {
                 </div>
               ))}
             </div>
-            <div className="news-link">HUD 只显示当前阶段下最关键的指标，不显示假数，不用固定 8 项。</div>
+            <div className="muted">{status}</div>
+            {error ? <div className="status-text-danger">{error}</div> : null}
+          </div>
+        </Card>
+      </div>
+
+      <div className="stack">
+        <Card>
+          <div className="stack">
+            <div>
+              <span className="kicker">capture guide</span>
+              <h2 className="section-title">拍摄建议</h2>
+            </div>
+            <div className="timeline-grid">
+              {flowHints.map((item, index) => (
+                <div key={item} className="timeline-card">
+                  <span className="badge badge-accent">0{index + 1}</span>
+                  <strong>{item}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="news-link">默认显示 4 项固定指标，点击“查看更多”可展开到 8 项完整 HUD。</div>
             {screenMode ? <div className="news-link">Screen Mode 建议完整拍入屏幕边框，并减少反光与曝光过亮。</div> : <div className="news-link">普通模式建议手机稳定在髋部高度，完整拍到头部与脚部。</div>}
           </div>
         </Card>

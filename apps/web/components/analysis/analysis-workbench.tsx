@@ -78,7 +78,7 @@ export function AnalysisWorkbench({ id }: { id: string }) {
       <section className="page-hero">
         <span className="kicker">analysis result</span>
         <h1 className="page-title">分析结果工作台</h1>
-        <p className="subhead">Session {session?.id} · 学员 {student?.name} · 来源 {analysis.sourceType} · 模式 {analysis.mode}</p>
+        <p className="subhead">Session {session?.id} · 学员 {student?.name} · 当前结果 {analysis.mode === 'deep' ? '正式分析' : '快速结果'}</p>
         <div className="action-strip">
           <Button tone="primary" onClick={share} disabled={shareBusy}>{shareBusy ? '生成中…' : '生成摘要卡并复制链接'}</Button>
           <Link href={`/analysis/${id}/issues`} className="button button-neutral">查看全部问题</Link>

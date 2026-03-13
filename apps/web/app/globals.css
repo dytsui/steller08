@@ -1047,3 +1047,166 @@ main {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
+
+
+.home-hero-shell {
+  padding: 28px;
+}
+
+.home-hero-grid {
+  align-items: center;
+}
+
+.home-subhead {
+  max-width: 640px;
+}
+
+.home-main-actions .button {
+  min-width: 142px;
+}
+
+.hero-screen-polish {
+  min-height: 320px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.14), transparent 28%),
+    linear-gradient(180deg, rgba(34, 41, 73, 0.95), rgba(18, 22, 38, 0.94));
+  border: 1px solid rgba(255,255,255,0.08);
+  display: grid;
+  align-items: end;
+  padding: 18px;
+}
+
+.hero-screen-copy {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.ticker-board {
+  gap: 12px;
+}
+
+.ticker-strip {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.035);
+  overflow: hidden;
+}
+
+.ticker-strip-secondary {
+  background: rgba(143,92,255,0.08);
+}
+
+.ticker-label {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+  white-space: nowrap;
+}
+
+.ticker-track {
+  display: inline-flex;
+  gap: 14px;
+  min-width: max-content;
+  animation: ticker-slide 32s linear infinite;
+}
+
+.ticker-item {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@keyframes ticker-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.home-news-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.news-card-featured {
+  min-height: 180px;
+}
+
+.mode-card-refined {
+  min-height: 100%;
+}
+
+.hud-shell-faded {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  padding: 14px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(6,9,18,0.18), rgba(6,9,18,0.62));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.hud-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hud-more-button {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.hud-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hud-metrics-expanded {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric-chip-soft {
+  border-radius: 18px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+}
+
+.metric-chip-primary {
+  opacity: 0.98;
+}
+
+.metric-chip-secondary {
+  opacity: 0.72;
+}
+
+.metric-target {
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+.capture-shell {
+  position: relative;
+}
+
+@media (max-width: 820px) {
+  .hud-metrics-expanded {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -88,30 +88,17 @@ function buildMetrics(landmarks: LandmarkPoint[]) {
   return metrics;
 }
 
-function metricsToHud(metrics: QuickSnapshot["metrics"], phase: string): Metric[] {
-  const presets: Record<string, Metric[]> = {
-    address: [
-      { label: "脊柱", value: metrics.spineTiltDeg, target: "32–38" },
-      { label: "头部", value: metrics.headSwayPx, target: "0–15" },
-      { label: "膝盖", value: metrics.kneeFlexDeg, target: "18–30" }
-    ],
-    top: [
-      { label: "肩转", value: metrics.shoulderTurnDeg, target: "75–95" },
-      { label: "髋转", value: metrics.hipTurnDeg, target: "35–45" },
-      { label: "肘部", value: metrics.elbowTrailDeg, target: "75–110" }
-    ],
-    impact: [
-      { label: "头部", value: metrics.headSwayPx, target: "0–12" },
-      { label: "髋滑移", value: metrics.pelvisSlidePx, target: "8–18" },
-      { label: "手腕", value: metrics.wristPathScore, target: "70–100" }
-    ],
-    finish: [
-      { label: "脊柱", value: metrics.spineTiltDeg, target: "30–38" },
-      { label: "肩转", value: metrics.shoulderTurnDeg, target: "60–90" },
-      { label: "平衡", value: metrics.wristPathScore, target: "70–100" }
-    ]
-  };
-  return presets[phase] ?? presets.address;
+function metricsToHud(metrics: QuickSnapshot["metrics"]): Metric[] {
+  return [
+    { label: '头部', value: metrics.headSwayPx, target: '0–15px' },
+    { label: '脊柱', value: metrics.spineTiltDeg, target: '32–38°' },
+    { label: '肩转', value: metrics.shoulderTurnDeg, target: '75–95' },
+    { label: '髋滑移', value: metrics.pelvisSlidePx, target: '8–18px' },
+    { label: '手腕', value: metrics.wristPathScore, target: '70–100' },
+    { label: '髋转', value: metrics.hipTurnDeg, target: '35–45' },
+    { label: '膝盖', value: metrics.kneeFlexDeg, target: '18–30°' },
+    { label: '肘部', value: metrics.elbowTrailDeg, target: '75–110°' }
+  ];
 }
 
 function drawOverlay(
@@ -175,8 +162,8 @@ function drawOverlay(
     ctx.fill();
   });
 
-  ctx.fillStyle = "rgba(9,8,17,0.6)";
-  ctx.fillRect(12, 12, 220, 54);
+  ctx.fillStyle = "rgba(9,8,17,0.45)";
+  ctx.fillRect(12, 12, 230, 54);
   ctx.fillStyle = "#f8f4ff";
   ctx.font = "600 14px Inter, sans-serif";
   ctx.fillText(`阶段: ${phase}`, 24, 34);
@@ -206,11 +193,7 @@ export function useCameraAnalysis(sourceType: AnalysisSource): CameraAnalysisSta
 
     async function boot() {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
       if (cancelled) return;
@@ -250,7 +233,7 @@ export function useCameraAnalysis(sourceType: AnalysisSource): CameraAnalysisSta
           if (landmarks?.length) {
             const quickMetrics = buildMetrics(landmarks);
             const nextPhase = phaseFromLandmarks(landmarks);
-            const nextHud = metricsToHud(quickMetrics, nextPhase);
+            const nextHud = metricsToHud(quickMetrics);
             const score = Math.round(clamp(
               92 - Math.max(0, quickMetrics.headSwayPx - 12) * 0.5 - Math.max(0, 70 - quickMetrics.wristPathScore) * 0.15,
               55,
@@ -315,18 +298,7 @@ export function useCameraAnalysis(sourceType: AnalysisSource): CameraAnalysisSta
   }, [sourceType]);
 
   return useMemo(
-    () => ({
-      videoRef,
-      overlayRef,
-      streamReady,
-      snapshotReady,
-      poseReady,
-      phase,
-      metrics,
-      hudPoints,
-      confidenceText,
-      quickSnapshot: snapshotRef.current
-    }),
+    () => ({ videoRef, overlayRef, streamReady, snapshotReady, poseReady, phase, metrics, hudPoints, confidenceText, quickSnapshot: snapshotRef.current }),
     [streamReady, snapshotReady, poseReady, phase, metrics, hudPoints, confidenceText]
   );
 }

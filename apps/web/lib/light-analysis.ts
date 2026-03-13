@@ -104,9 +104,9 @@ export function runLightAnalysis(input: {
     ],
     metrics,
     issues,
-    reportZh: `快速首扫完成：已基于真实姿态采样得出节奏 ${tempoRatio}、评分 ${score}，深度分析完成后会以 Render 正式结果覆写。`,
-    reportEn: `Quick scan finished: real pose samples produced tempo ${tempoRatio} and score ${score}. Render deep analysis will replace this with the formal result.`,
-    trainingPlanZh: issues.length ? issues.slice(0, 2).map((issue) => `针对 ${issue.titleZh} 先做 8–12 次专项练习`) : ['先保持当前节奏，再进入深分析训练计划。'],
+    reportZh: `快速首扫完成：已基于真实姿态采样得出节奏 ${tempoRatio}、评分 ${score}，正式分析完成后会以完整结果更新。`,
+    reportEn: `Quick scan finished: real pose samples produced tempo ${tempoRatio} and score ${score}. The formal analysis will update this result when ready.`,
+    trainingPlanZh: issues.length ? issues.slice(0, 2).map((issue) => `针对 ${issue.titleZh} 先做 8–12 次专项练习`) : ['先保持当前节奏，再等待正式训练建议。'],
     trainingPlanEn: issues.length ? issues.slice(0, 2).map((issue) => `Run 8-12 focused reps for ${issue.titleEn}`) : ['Hold current tempo and wait for deep-analysis training plan.'],
     createdAt: new Date().toISOString()
   };

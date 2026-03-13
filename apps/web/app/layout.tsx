@@ -6,7 +6,7 @@ import { LocaleProvider } from "@/components/layout/use-locale";
 
 export const metadata: Metadata = {
   title: "Steller08",
-  description: "Cloudflare + D1/R2 + Render golf AI coaching operating edition"
+  description: "AI golf coaching platform for users and pros"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

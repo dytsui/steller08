@@ -56,7 +56,7 @@ export function TrainingBoard() {
           </select>
           {latest ? (
             <>
-              <div className="summary-card"><div className="muted">最近一次分析</div><strong>{latest.sourceType}</strong><div className="muted">分数 {latest.score ?? '--'}</div></div>
+              <div className="summary-card"><div className="muted">最近一次分析</div><strong>{latest.sourceType.startsWith('screen') ? 'Screen Mode' : '普通模式'}</strong><div className="muted">分数 {latest.score ?? '--'}</div></div>
               <div className="summary-card"><div className="muted">平均 Tempo</div><strong>{avgTempo}</strong></div>
               <div className="summary-card"><div className="muted">平均问题数</div><strong>{avgIssues}</strong></div>
               <div className="summary-card"><div className="muted">最近 5 次改善率</div><strong>{fiveDayImprovement === null ? '--' : `${fiveDayImprovement}%`}</strong></div>
@@ -113,7 +113,7 @@ export function TrainingBoard() {
             <div className="stack">
               {history.slice(0, 6).map((item: any, idx: number) => (
                 <Link key={idx} href={`/analysis/${item.id}`} className="news-link">
-                  <strong>{idx + 1}. {item.sourceType} · {item.score ?? '--'}</strong>
+                  <strong>{idx + 1}. {item.sourceType.startsWith('screen') ? 'Screen Mode' : '普通模式'} · {item.score ?? '--'}</strong>
                   <span className="muted">{new Date(item.createdAt).toLocaleDateString()}</span>
                 </Link>
               ))}

@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { buildSession, hashPassword, AUTH_COOKIE_NAME } from "@/lib/auth";
-import { createAuthSession, createUser, getUserByEmail } from "@/lib/auth-store";
+import { createAuthSession, createUser, getUserByEmail, linkCoachAndStudent } from "@/lib/auth-store";
+import { findStudentByUserId, upsertStudent } from "@/lib/d1";
 import type { UserAccount, UserRole } from "@/lib/types";
 import { makeId } from "@/lib/utils";
 
@@ -30,6 +31,34 @@ export async function POST(request: Request) {
     passwordHash: await hashPassword(password)
   };
   await createUser(user);
+
+  if (role === 'user') {
+    const existingStudent = await findStudentByUserId(user.id);
+    if (!existingStudent) {
+      await upsertStudent({
+        id: makeId('stu'),
+        userId: user.id,
+        coachUserId: null,
+        name: user.displayName,
+        dominantHand: 'right',
+        level: 'Beginner',
+        handicap: 28,
+        notes: '',
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+  } else {
+    await linkCoachAndStudent({
+      id: makeId('lnk'),
+      coachUserId: user.id,
+      relationshipStatus: 'active',
+      createdAt: now,
+      studentProfileId: null,
+      studentUserId: null
+    }).catch(() => undefined);
+  }
+
   const built = await buildSession(user);
   await createAuthSession(built.payload, built.tokenHash);
   const cookieStore = await cookies();

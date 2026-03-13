@@ -6,6 +6,13 @@ function db() {
   return getEnv().DB;
 }
 
+type StudentOwnerRow = {
+  id: string;
+  userId?: string | null;
+  coachUserId?: string | null;
+  name: string;
+};
+
 export async function createUser(user: UserAccount & { passwordHash: string }) {
   await db().prepare(`
     INSERT INTO users (id, email, password_hash, role, display_name, avatar_url, status, created_at, updated_at)
@@ -110,4 +117,22 @@ export async function listCoachLinks(coachUserId: string) {
 export async function countRole(role: UserRole) {
   const row = await db().prepare(`SELECT COUNT(*) as count FROM users WHERE role = ?1`).bind(role).first();
   return Number(row?.count ?? 0);
+}
+
+export async function listStudentOwnerRowsForCoach(coachUserId: string) {
+  const result = await db().prepare(`
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name
+    FROM students
+    WHERE coach_user_id = ?1
+    ORDER BY updated_at DESC
+  `).bind(coachUserId).all();
+  return (result.results ?? []) as StudentOwnerRow[];
+}
+
+export async function getStudentOwnerRow(studentId: string) {
+  const row = await db().prepare(`
+    SELECT id, user_id as userId, coach_user_id as coachUserId, name
+    FROM students WHERE id = ?1 LIMIT 1
+  `).bind(studentId).first();
+  return (row ?? null) as StudentOwnerRow | null;
 }
