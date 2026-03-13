@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "steller08",
-      "database_id": "REPLACE_WITH_D1_ID"
+      "database_id": "YOUR_REAL_D1_DATABASE_ID"
     }
   ],
   "r2_buckets": [
