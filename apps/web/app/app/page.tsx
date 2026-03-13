@@ -13,7 +13,8 @@ export default async function UserPortalPage() {
       links={[
         { href: "/app/capture", label: "开始拍摄" },
         { href: "/app/upload", label: "上传视频" },
-        { href: "/app/history", label: "我的分析" }
+        { href: "/app/history", label: "我的分析" },
+        { href: "/app/profile", label: "我的档案" }
       ]}
     >
       <section className="stats-grid">

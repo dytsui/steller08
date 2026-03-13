@@ -1,52 +1,54 @@
-import Link from "next/link";
-import { fetchChineseGolfNews } from "@/lib/news";
+import Link from 'next/link';
+import { fetchChineseGolfNews } from '@/lib/news';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const tips = [
-  '保持上杆宽度，别急着用手卷杆。',
-  'Top 到 Impact 的转换顺序决定击球稳定性。',
-  '头部稳定，低点击球更容易重复。',
-  '髋部先带动，减少外下切。',
-  '收杆能站稳，往往说明顺序更对。',
-  '击球前保持脊柱前倾，不要提前起身。'
-];
-
-const promos = [
-  '上传挥杆，快速找到最该先修的问题。',
-  '实时录制，马上看到动作提示。',
-  '正式分析生成训练计划，知道下一步怎么练。',
-  '标准模板对比，快速看出关键差距。',
-  '持续记录训练结果，追踪技术是否真的进步。'
+const topTickerItems = [
+  '保持上杆宽度',
+  '头部保持稳定',
+  '髋部先启动',
+  '上传挥杆，快速发现关键问题',
+  '录制挥杆，实时查看动作提示',
+  '正式分析，获得训练计划',
+  '对比标准模板，发现差距',
+  '持续记录，追踪进步趋势'
 ];
 
 const modes = [
   {
-    title: '普通模式',
-    subtitle: '直接拍人或上传原始挥杆视频',
-    bullets: ['实时骨架与关键指标', '录制结束进入正式分析', '结果同步到记录与训练'],
+    title: '用户端',
+    subtitle: '给学员和普通用户使用',
+    bullets: ['拍摄与上传', '查看分析与训练计划', '持续追踪成长趋势'],
     href: '/login'
   },
   {
-    title: 'Screen Mode',
-    subtitle: '对投影、电视、电脑或平板里的挥杆画面进行分析',
-    bullets: ['屏幕识别与纠偏增强', '适合练习场回放与教学复盘', '后续进入正式分析结果'],
+    title: 'Pro端',
+    subtitle: '给教练、工作室、练习场与机构使用',
+    bullets: ['管理自己学员', '代学员拍摄与上传', '复盘与下发训练重点'],
     href: '/login'
   }
 ];
 
 export default async function HomePage() {
-  const news = await fetchChineseGolfNews();
+  const newsPayload = await fetchChineseGolfNews();
+  const news = newsPayload.items;
 
   return (
     <main className="page stack">
+      <section className="top-ticker-strip" aria-label="golf value ticker">
+        <span className="ticker-label">挥杆训练重点</span>
+        <div className="ticker-track">
+          {[...topTickerItems, ...topTickerItems].map((item, index) => <span key={`${item}-${index}`} className="ticker-item">{item}</span>)}
+        </div>
+      </section>
+
       <section className="hero-shell home-hero-shell">
         <div className="hero-grid home-hero-grid">
           <div className="hero-copy">
-            <span className="kicker">ai golf improvement platform</span>
-            <h1 className="headline">看懂问题，马上开始提升挥杆技术</h1>
+            <span className="kicker">swing improvement</span>
+            <h1 className="headline">真正把挥杆分析变成训练闭环</h1>
             <p className="subhead home-subhead">
-              Steller08 把挥杆分析变成真正可执行的训练闭环：先找到主问题，再给出 3 秒纠正提示、阶段诊断、关键帧对比与训练计划。
+              先做真实分析，再生成简洁可执行的训练输出。上传、拍摄、查看分析、复盘训练和追踪成长，都围绕真正有用的挥杆改进来设计。
             </p>
             <div className="hero-actions home-main-actions">
               <Link href="/login"><span className="button button-primary">进入用户端</span></Link>
@@ -57,65 +59,21 @@ export default async function HomePage() {
             <div className="hero-screen hero-screen-polish">
               <div className="hero-screen-copy">
                 <span className="badge badge-accent">主问题优先级</span>
+                <span className="badge">3 秒纠正提示</span>
                 <span className="badge">阶段式挥杆诊断</span>
-                <span className="badge">关键帧对比</span>
-                <span className="badge">AI训练计划</span>
+                <span className="badge">标准模板对比</span>
+                <span className="badge">训练计划</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="ticker-board stack">
-        <div className="ticker-strip">
-          <span className="ticker-label">技术要点</span>
-          <div className="ticker-track">
-            {[...tips, ...tips].map((item, index) => <span key={`${item}-${index}`} className="ticker-item">{item}</span>)}
-          </div>
-        </div>
-        <div className="ticker-strip ticker-strip-secondary">
-          <span className="ticker-label">提升方式</span>
-          <div className="ticker-track">
-            {[...promos, ...promos].map((item, index) => <span key={`${item}-${index}`} className="ticker-item">{item}</span>)}
-          </div>
-        </div>
-      </section>
-
-      <section className="news-carousel stack">
-        <div className="surface-title-row">
-          <div>
-            <span className="kicker">pro golf news</span>
-            <h2 className="section-title">职业高尔夫新闻</h2>
-          </div>
-          <Link href="/login" className="badge">登录后查看分析</Link>
-        </div>
-        {news.length ? (
-          <div className="news-grid home-news-grid">
-            {news.map((item) => (
-              <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="news-card news-card-featured">
-                <div className="news-meta">
-                  <span className="badge">{item.category ?? '资讯'}</span>
-                  <span>{item.source ?? 'Golf News'}</span>
-                  {item.publishedAt ? <span>{item.publishedAt}</span> : null}
-                </div>
-                <h3 className="news-title">{item.title}</h3>
-                <span className="muted">打开原文</span>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <strong>新闻流暂未返回数据</strong>
-            <span>将继续显示最近成功缓存或下一次刷新后的真实新闻。</span>
-          </div>
-        )}
-      </section>
-
       <section className="modes-grid">
         {modes.map((mode) => (
           <div key={mode.title} className="card stack mode-card-refined">
             <div>
-              <span className="kicker">mode</span>
+              <span className="kicker">portal</span>
               <h2 className="section-title">{mode.title}</h2>
               <p className="subhead">{mode.subtitle}</p>
             </div>
@@ -127,6 +85,74 @@ export default async function HomePage() {
             <Link href={mode.href}><span className="button button-primary">登录后进入</span></Link>
           </div>
         ))}
+      </section>
+
+      <section className="card stack">
+        <div className="surface-title-row">
+          <div>
+            <span className="kicker">mode guide</span>
+            <h2 className="section-title">模式说明</h2>
+          </div>
+        </div>
+        <div className="timeline-grid">
+          <div className="timeline-card">
+            <strong>普通模式</strong>
+            <span className="muted">直接拍人或上传原始挥杆视频，适合自己的练习录制与上传复盘。</span>
+          </div>
+          <div className="timeline-card">
+            <strong>Screen Mode</strong>
+            <span className="muted">对投影仪、电视、电脑屏幕或平板中的挥杆回放做分析，适合教学回看与练习场复盘。</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="news-carousel stack">
+        <div className="surface-title-row">
+          <div>
+            <span className="kicker">pro golf news</span>
+            <h2 className="section-title">职业高尔夫新闻</h2>
+          </div>
+          <div className="stack" style={{ gap: 4, justifyItems: 'end' }}>
+            <span className="badge">{newsPayload.cached ? '缓存内容' : '实时刷新'}</span>
+            {newsPayload.updatedAt ? <span className="muted">更新时间 {new Date(newsPayload.updatedAt).toLocaleString('zh-CN')}</span> : null}
+          </div>
+        </div>
+        {news.length ? (
+          <div className="news-grid home-news-grid">
+            {news.map((item) => (
+              <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="news-card news-card-featured">
+                <div className="news-meta">
+                  <span className="badge">{item.category ?? '资讯'}</span>
+                  <span>{item.source ?? 'Golf News'}</span>
+                  {item.publishedAt ? <span>{item.publishedAt}</span> : null}
+                </div>
+                <h3 className="news-title">{item.title}</h3>
+                {item.summary ? <p className="muted">{item.summary}</p> : null}
+                <span className="muted">打开原文</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            <strong>新闻流暂未返回内容</strong>
+            <span>当前会优先显示最近一次成功拉取并写入缓存的真实新闻。</span>
+          </div>
+        )}
+      </section>
+
+      <section className="stats-grid">
+        <div className="card stack">
+          <strong>次级入口</strong>
+          <div className="hero-actions">
+            <Link href="/login"><span className="button button-neutral">上传视频</span></Link>
+            <Link href="/login"><span className="button button-neutral">开始拍摄</span></Link>
+            <Link href="/login"><span className="button button-neutral">查看训练</span></Link>
+          </div>
+        </div>
+        <div className="card stack">
+          <strong>产品原则</strong>
+          <span className="muted">没有真实首扫就不显示快速结果，没有深分析回写就不显示正式报告。</span>
+        </div>
       </section>
     </main>
   );

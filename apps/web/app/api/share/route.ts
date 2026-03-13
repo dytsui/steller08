@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
-import { createShareLog, getAnalysis, updateSessionShareKey } from "@/lib/d1";
-import { makeShareKey, uploadMedia } from "@/lib/r2";
+import { NextResponse } from 'next/server';
+import { createShareLog, getAnalysis, getSessionForScope, updateSessionShareKey } from '@/lib/d1';
+import { makeShareKey, uploadMedia } from '@/lib/r2';
+import { getRequestScope } from '@/lib/scope';
 
 function buildShareSvg(score: number, tempo: number, issues: string[]) {
-  const safeIssues = issues.slice(0, 3).map((issue, idx) => `<text x="48" y="${170 + idx * 34}" font-size="22" fill="#f4f0ff">• ${issue}</text>`).join("");
+  const safeIssues = issues.slice(0, 3).map((issue, idx) => `<text x="48" y="${170 + idx * 34}" font-size="22" fill="#f4f0ff">• ${issue}</text>`).join('');
   return `
   <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
     <defs>
@@ -22,12 +23,18 @@ function buildShareSvg(score: number, tempo: number, issues: string[]) {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json() as { sessionId: string; channel: string };
-  const analysis = await getAnalysis(body.sessionId);
-  if (!analysis) return NextResponse.json({ error: "analysis_not_found" }, { status: 404 });
+  const scope = await getRequestScope();
+  if (!scope) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const summaryKey = makeShareKey(body.sessionId, "json");
-  const cardKey = makeShareKey(`${body.sessionId}-card`, "svg");
+  const body = await request.json() as { sessionId: string; channel: string };
+  const session = await getSessionForScope(body.sessionId, scope);
+  if (!session) return NextResponse.json({ error: 'session_not_found' }, { status: 404 });
+
+  const analysis = await getAnalysis(body.sessionId);
+  if (!analysis) return NextResponse.json({ error: 'analysis_not_found' }, { status: 404 });
+
+  const summaryKey = makeShareKey(body.sessionId, 'json');
+  const cardKey = makeShareKey(`${body.sessionId}-card`, 'svg');
   const payload = JSON.stringify({
     sessionId: analysis.sessionId,
     score: analysis.score,
@@ -36,8 +43,8 @@ export async function POST(request: Request) {
   }, null, 2);
   const svg = buildShareSvg(analysis.score, analysis.tempoRatio, analysis.issues.map((item) => item.titleZh));
 
-  await uploadMedia("SHARES", summaryKey, new TextEncoder().encode(payload), "application/json");
-  await uploadMedia("SHARES", cardKey, new TextEncoder().encode(svg), "image/svg+xml");
+  await uploadMedia('SHARES', summaryKey, new TextEncoder().encode(payload), 'application/json');
+  await uploadMedia('SHARES', cardKey, new TextEncoder().encode(svg), 'image/svg+xml');
   await updateSessionShareKey(body.sessionId, summaryKey);
   await createShareLog(body.sessionId, body.channel, summaryKey);
 

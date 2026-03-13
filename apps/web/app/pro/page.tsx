@@ -24,6 +24,8 @@ export default async function ProPortalPage() {
         { href: "/pro/upload", label: "代学员上传" },
         { href: "/pro/capture", label: "代学员拍摄" },
         { href: "/pro/invites", label: "邀请绑定" },
+        { href: "/pro/training", label: "训练计划" },
+        { href: "/pro/settings", label: "设置" },
       ]}
     >
       <section className="stats-grid">
