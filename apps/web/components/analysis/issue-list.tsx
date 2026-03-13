@@ -1,4 +1,7 @@
+"use client";
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { enrichIssue } from '@/lib/training';
 import type { AnalysisResult } from '@/lib/types';
@@ -8,6 +11,8 @@ function phaseZh(phase: string) {
 }
 
 export function IssueList({ analysis, sessionId }: { analysis: AnalysisResult; sessionId: string }) {
+  const pathname = usePathname();
+  const basePath = pathname.startsWith('/pro') ? `/pro/analysis/${sessionId}` : pathname.startsWith('/app') ? `/app/analysis/${sessionId}` : `/analysis/${sessionId}`;
   const issues = analysis.issues.map(enrichIssue);
 
   return (
@@ -17,7 +22,7 @@ export function IssueList({ analysis, sessionId }: { analysis: AnalysisResult; s
         <h1 className="page-title">问题列表</h1>
         <p className="subhead">按严重度和阶段查看本次 session 的问题，点击进入详情页查看原因、修正和 drill。</p>
         <div className="action-strip">
-          <Link href={`/analysis/${sessionId}`} className="button button-neutral">返回分析总览</Link>
+          <Link href={basePath} className="button button-neutral">返回分析总览</Link>
         </div>
       </section>
 
@@ -40,7 +45,7 @@ export function IssueList({ analysis, sessionId }: { analysis: AnalysisResult; s
                     <span key={code} className="badge">{code.replace('drill_', '')}</span>
                   ))}
                 </div>
-                <Link href={`/analysis/${sessionId}/issues/${issue.code}`} className="button button-primary">查看问题详情</Link>
+                <Link href={`${basePath}/issues/${issue.code}`} className="button button-primary">查看问题详情</Link>
               </div>
             </Card>
           ))}

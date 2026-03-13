@@ -2,10 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { getCurrentStudentId, setCurrentStudentId, subscribeCurrentStudent } from '@/lib/current-student';
+import { analysisPathForPortal } from '@/lib/scope';
 
 export function TrainingBoard() {
+  const pathname = usePathname();
+  const portal = pathname.startsWith('/pro') ? 'pro' : 'app';
   const [studentId, setStudentId] = useState('');
   const [students, setStudents] = useState<any[]>([]);
   const [growth, setGrowth] = useState<any[]>([]);
@@ -107,12 +111,12 @@ export function TrainingBoard() {
                   <div className="muted">{item.summary}</div>
                 </div>
               ))}
-              {latest ? <Link href={`/analysis/${latest.id}`} className="button button-primary">查看最近一次分析</Link> : null}
+              {latest ? <Link href={analysisPathForPortal(portal, latest.id)} className="button button-primary">查看最近一次分析</Link> : null}
             </div>
           ) : history.length ? (
             <div className="stack">
               {history.slice(0, 6).map((item: any, idx: number) => (
-                <Link key={idx} href={`/analysis/${item.id}`} className="news-link">
+                <Link key={idx} href={analysisPathForPortal(portal, item.id)} className="news-link">
                   <strong>{idx + 1}. {item.sourceType.startsWith('screen') ? 'Screen Mode' : '普通模式'} · {item.score ?? '--'}</strong>
                   <span className="muted">{new Date(item.createdAt).toLocaleDateString()}</span>
                 </Link>
