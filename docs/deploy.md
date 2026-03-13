@@ -30,15 +30,18 @@ Bindings expected by code:
 - D1: `DB`
 - R2: `VIDEOS`, `KEYFRAMES`, `SHARES`, `EXPORTS`
 
-Required vars:
+Non-secret vars:
 
 - `NEXT_PUBLIC_APP_URL`
 - `ANALYZER_BASE_URL`
-- `ANALYZER_TOKEN`
-- `GEMINI_API_KEY`
 - `GEMINI_MODEL`
 - `GEMINI_API_BASE`
 - `NEWS_API_BASE`
+
+Secrets:
+
+- `ANALYZER_TOKEN`
+- `GEMINI_API_KEY`
 - `AUTH_SECRET`
 
 ## 3) Render analyzer deploy
@@ -55,7 +58,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
 Environment:
 
-- `ANALYZER_TOKEN` should match Cloudflare side if you later enforce bearer auth.
+- `ANALYZER_TOKEN` should match the Cloudflare secret if you enforce bearer auth.
 
 ## 4) Runtime chain
 
@@ -65,7 +68,7 @@ Environment:
 4. Browser performs real quick scan
 5. `/api/sessions` writes source video to `VIDEOS` and session row to D1
 6. `/api/analyze/light` writes quick result to D1
-7. `/api/analyze/deep` calls Render analyzer
+7. `/api/analyze/deep` reads the source video from R2 and uploads it to Render analyzer
 8. Deep result writes keyframe images to `KEYFRAMES`, writes structured result to D1, then stores share cards to `SHARES` when requested
 9. `/analysis/[id]`, `/history`, `/training` read only persisted data
 
