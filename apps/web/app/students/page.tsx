@@ -1,14 +1,10 @@
-import { StudentManager } from "@/components/students/student-manager";
+import { ApiForm } from "@/components/ApiForm";
 
-export default function StudentsPage() {
+export default async function StudentsPage() {
   return (
-    <main className="page stack">
-      <section className="page-hero">
-        <span className="kicker">player profile</span>
-        <h1 className="page-title">我的档案</h1>
-        <p className="subhead">在这里维护当前使用的档案。之后上传、拍摄、记录和训练都会自动联动。</p>
-      </section>
-      <StudentManager />
-    </main>
+    <div>
+      <h2>创建学员</h2>
+      <ApiForm action="/api/students" fields={[{ name: "name", label: "姓名" }, { name: "level", label: "水平" }, { name: "dominantHand", label: "惯用手" }, { name: "handicap", label: "差点" }, { name: "notes", label: "备注" }]} />
+    </div>
   );
 }

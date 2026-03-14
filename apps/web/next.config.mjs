@@ -1,13 +1,13 @@
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-initOpenNextCloudflareForDev();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    unoptimized: true
-  },
-  typedRoutes: false
+  reactStrictMode: true,
+  turbopack: {
+    root: __dirname
+  }
 };
 
 export default nextConfig;

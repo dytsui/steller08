@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
-import { readMedia, type MediaBucket } from "@/lib/r2";
+import { getRequestScope } from "@/lib/scope";
+import { createMediaSession } from "@/lib/services";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const key = url.searchParams.get("key");
-  const bucket = (url.searchParams.get("bucket") ?? "VIDEOS") as MediaBucket;
-  if (!key) return NextResponse.json({ error: "missing_key" }, { status: 400 });
-  const object = await readMedia(bucket, key);
-  if (!object) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  return new Response(object.body, { headers });
+export async function POST(req: Request) {
+  const scope = await getRequestScope();
+  if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const form = await req.formData();
+  const file = form.get("file");
+  const studentId = String(form.get("studentId") ?? "");
+  const sourceType = (String(form.get("sourceType") ?? "upload") === "capture" ? "capture" : "upload") as "upload" | "capture";
+  if (!(file instanceof File)) return NextResponse.json({ error: "File required" }, { status: 400 });
+
+  const session = await createMediaSession(scope, {
+    studentId,
+    sourceType,
+    fileName: file.name,
+    contentType: file.type || "video/mp4",
+    buffer: await file.arrayBuffer()
+  });
+
+  return NextResponse.json(session, { status: 201 });
 }

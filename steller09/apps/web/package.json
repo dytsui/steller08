@@ -1,0 +1,25 @@
+{
+  "name": "steller09-web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "typecheck": "tsc --noEmit",
+    "open-next:build": "npx @opennextjs/cloudflare build",
+    "open-next:deploy": "npx @opennextjs/cloudflare deploy"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "1.17.1",
+    "@types/node": "22.19.15",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3",
+    "wrangler": "4.72.0"
+  }
+}

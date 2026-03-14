@@ -1,36 +1,15 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME, buildSession, hashPassword } from "@/lib/auth";
-import { createAuthSession, getUserByEmail } from "@/lib/auth-store";
+import { createAuthSession, verifyPassword } from "@/lib/auth";
+import { one } from "@/lib/db";
+import type { Role } from "@/types/domain";
 
-export async function POST(request: Request) {
-  const body = await request.json() as { email?: string; password?: string };
-  const email = body.email?.trim().toLowerCase();
-  const password = body.password?.trim();
-  if (!email || !password) {
-    return NextResponse.json({ error: "invalid_credentials" }, { status: 400 });
+export async function POST(req: Request) {
+  const body = (await req.json()) as { email: string; password: string };
+  const user = await one<{ id: string; password_hash: string; role: Role }>("SELECT id, password_hash, role FROM users WHERE email = ?", [body.email]);
+  if (!user) return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
+  if (!(await verifyPassword(body.password, user.password_hash))) {
+    return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
   }
-  const user = await getUserByEmail(email);
-  if (!user || user.passwordHash !== await hashPassword(password)) {
-    return NextResponse.json({ error: "email_or_password_invalid" }, { status: 401 });
-  }
-  const built = await buildSession(user);
-  await createAuthSession(built.payload, built.tokenHash);
-  const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, built.cookieValue, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: true,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 14
-  });
-  return NextResponse.json({
-    ok: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role
-    }
-  });
+  await createAuthSession(user.id, user.role);
+  return NextResponse.json({ ok: true });
 }

@@ -1,0 +1,12 @@
+{
+  "name": "steller09",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "typecheck:web": "npm --workspace apps/web run typecheck",
+    "open-next:build": "npm --workspace apps/web run open-next:build",
+    "open-next:deploy": "npm --workspace apps/web run open-next:deploy"
+  }
+}

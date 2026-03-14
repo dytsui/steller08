@@ -1,19 +1,11 @@
-export function cn(...parts: Array<string | false | null | undefined>) {
-  return parts.filter(Boolean).join(" ");
+export function nowIso(): string {
+  return new Date().toISOString();
 }
 
-export function fmtDate(input: string) {
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return input;
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
+export function uid(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
-export function makeId(prefix: string) {
-  return `${prefix}_${crypto.randomUUID()}`;
+export function json<T>(value: T): string {
+  return JSON.stringify(value);
 }

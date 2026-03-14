@@ -1,22 +1,24 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { LocaleProvider } from "@/components/layout/use-locale";
+import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Steller08",
-  description: "AI golf coaching platform for users and pros"
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
       <body>
-        <LocaleProvider>
-          <Header />
+        <main>
+          <h1>Steller09 Golf AI Coach</h1>
+          <nav>
+            <Link href="/">首页</Link>
+            <Link href="/login">登录</Link>
+            <Link href="/register">注册</Link>
+            <Link href="/students">学员</Link>
+            <Link href="/upload">上传</Link>
+            <Link href="/capture">拍摄</Link>
+            <Link href="/history">历史</Link>
+            <Link href="/pro">Pro</Link>
+          </nav>
           {children}
-        </LocaleProvider>
+        </main>
       </body>
     </html>
   );

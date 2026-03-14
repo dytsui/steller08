@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
   display_name TEXT NOT NULL,
-  avatar_url TEXT,
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -20,28 +19,6 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS coach_student_links (
-  id TEXT PRIMARY KEY,
-  coach_user_id TEXT NOT NULL,
-  student_user_id TEXT,
-  student_profile_id TEXT,
-  relationship_status TEXT NOT NULL DEFAULT 'invited',
-  created_at TEXT NOT NULL,
-  FOREIGN KEY(coach_user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY(student_user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS coach_invites (
-  id TEXT PRIMARY KEY,
-  coach_user_id TEXT NOT NULL,
-  invite_code TEXT NOT NULL UNIQUE,
-  email TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY(coach_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS students (
   id TEXT PRIMARY KEY,
   user_id TEXT,
@@ -51,7 +28,6 @@ CREATE TABLE IF NOT EXISTS students (
   level TEXT NOT NULL,
   handicap REAL NOT NULL,
   notes TEXT NOT NULL DEFAULT '',
-  avatar_url TEXT,
   is_current INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -64,17 +40,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   student_id TEXT NOT NULL,
   source_type TEXT NOT NULL,
   status TEXT NOT NULL,
-  title TEXT,
   video_key TEXT NOT NULL,
   preview_key TEXT,
   share_key TEXT,
-  screen_mode INTEGER NOT NULL DEFAULT 0,
   light_score REAL,
   final_score REAL,
   tempo_ratio REAL,
   duration_ms INTEGER,
-  source_width INTEGER,
-  source_height INTEGER,
   error_message TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -99,6 +71,16 @@ CREATE TABLE IF NOT EXISTS analysis_results (
   FOREIGN KEY(session_id) REFERENCES sessions(id)
 );
 
+CREATE TABLE IF NOT EXISTS metrics (
+  session_id TEXT PRIMARY KEY,
+  spine_tilt_deg REAL NOT NULL,
+  shoulder_turn_deg REAL NOT NULL,
+  hip_turn_deg REAL NOT NULL,
+  head_sway_px REAL NOT NULL,
+  wrist_path_score REAL NOT NULL,
+  FOREIGN KEY(session_id) REFERENCES sessions(id)
+);
+
 CREATE TABLE IF NOT EXISTS keyframes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id TEXT NOT NULL,
@@ -107,19 +89,6 @@ CREATE TABLE IF NOT EXISTS keyframes (
   confidence REAL NOT NULL,
   image_key TEXT,
   preview_key TEXT,
-  FOREIGN KEY(session_id) REFERENCES sessions(id)
-);
-
-CREATE TABLE IF NOT EXISTS metrics (
-  session_id TEXT PRIMARY KEY,
-  spine_tilt_deg REAL NOT NULL,
-  shoulder_turn_deg REAL NOT NULL,
-  hip_turn_deg REAL NOT NULL,
-  head_sway_px REAL NOT NULL,
-  wrist_path_score REAL NOT NULL,
-  knee_flex_deg REAL,
-  elbow_trail_deg REAL,
-  pelvis_slide_px REAL,
   FOREIGN KEY(session_id) REFERENCES sessions(id)
 );
 
@@ -170,49 +139,23 @@ CREATE TABLE IF NOT EXISTS share_logs (
   FOREIGN KEY(session_id) REFERENCES sessions(id)
 );
 
-CREATE TABLE IF NOT EXISTS drills (
+CREATE TABLE IF NOT EXISTS coach_links (
   id TEXT PRIMARY KEY,
-  drill_code TEXT NOT NULL UNIQUE,
-  title TEXT NOT NULL,
-  description TEXT,
-  target_issue_code TEXT NOT NULL,
-  difficulty TEXT NOT NULL DEFAULT 'beginner',
-  video_url TEXT,
-  cover_r2_key TEXT,
-  duration_minutes INTEGER DEFAULT 10,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  coach_user_id TEXT NOT NULL,
+  student_user_id TEXT,
+  student_profile_id TEXT,
+  relationship_status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(coach_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS news_cache (
+CREATE TABLE IF NOT EXISTS coach_invites (
   id TEXT PRIMARY KEY,
-  lang TEXT NOT NULL DEFAULT 'zh',
-  title TEXT NOT NULL,
-  summary TEXT,
-  image_url TEXT,
-  source TEXT,
-  published_at TEXT,
-  url TEXT NOT NULL,
-  category TEXT,
-  fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  coach_user_id TEXT NOT NULL,
+  invite_code TEXT NOT NULL UNIQUE,
+  email TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(coach_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
-CREATE TABLE IF NOT EXISTS app_settings (
-  id TEXT PRIMARY KEY,
-  key TEXT NOT NULL UNIQUE,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_coach_links_coach ON coach_student_links(coach_user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_coach_invites_coach ON coach_invites(coach_user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_students_user ON students(user_id);
-CREATE INDEX IF NOT EXISTS idx_students_coach ON students(coach_user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_student_created ON sessions(student_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_issues_session ON issues(session_id);
-CREATE INDEX IF NOT EXISTS idx_reports_session_lang ON reports(session_id, lang);
-CREATE INDEX IF NOT EXISTS idx_training_plans_session ON training_plans(session_id);
-CREATE INDEX IF NOT EXISTS idx_drills_issue ON drills(target_issue_code);
-CREATE INDEX IF NOT EXISTS idx_news_cache_lang_published ON news_cache(lang, published_at DESC);

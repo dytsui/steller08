@@ -1,7 +1,6 @@
 {
-  "$schema": "./apps/web/node_modules/wrangler/config-schema.json",
-  "name": "steller08",
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "steller09-root",
   "main": "apps/web/.open-next/worker.js",
-  "compatibility_date": "2026-03-13",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_date": "2026-03-14"
 }

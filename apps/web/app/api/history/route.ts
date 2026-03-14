@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
-import { getCurrentSessionPayload } from '@/lib/auth';
-import { getGrowth, listHistory } from "@/lib/d1";
+import { getRequestScope } from "@/lib/scope";
+import { many } from "@/lib/db";
 
-function scopeFromPayload(payload: Awaited<ReturnType<typeof getCurrentSessionPayload>>) {
-  if (!payload) return null;
-  if (payload.role === 'admin') return { role: 'admin' as const, userId: payload.userId };
-  if (payload.role === 'pro') return { role: 'pro' as const, userId: payload.userId };
-  return { role: 'user' as const, userId: payload.userId };
-}
-
-export async function GET(request: Request) {
-  const payload = await getCurrentSessionPayload();
-  const scope = scopeFromPayload(payload);
-  if (!scope) return NextResponse.json({ history: [], growth: [] });
-  const url = new URL(request.url);
-  const studentId = url.searchParams.get("studentId") ?? undefined;
-  const history = await listHistory(studentId, scope);
-  const growth = studentId ? await getGrowth(studentId, scope) : [];
-  return NextResponse.json({ history, growth });
+export async function GET() {
+  const scope = await getRequestScope();
+  if (!scope) return NextResponse.json({ items: [] });
+  const items = await many(
+    `SELECT s.id, s.status, s.light_score, s.final_score, s.created_at, st.name AS student_name
+     FROM sessions s JOIN students st ON st.id = s.student_id
+     WHERE ${scope.canReadAll ? "1=1" : scope.role === "pro" ? "st.coach_user_id=?" : "st.user_id=?"}
+     ORDER BY s.created_at DESC`,
+    scope.canReadAll ? [] : [scope.userId]
+  );
+  return NextResponse.json({ items });
 }

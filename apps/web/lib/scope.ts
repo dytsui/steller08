@@ -1,16 +1,25 @@
-import 'server-only';
-
-import { getCurrentSessionPayload, type AuthSessionPayload } from '@/lib/auth';
-
-export type RequestScope = { role: 'user' | 'pro' | 'admin'; userId: string };
-
-export function scopeFromPayload(payload: AuthSessionPayload | null): RequestScope | null {
-  if (!payload) return null;
-  if (payload.role === 'admin') return { role: 'admin', userId: payload.userId };
-  if (payload.role === 'pro') return { role: 'pro', userId: payload.userId };
-  return { role: 'user', userId: payload.userId };
-}
+import { getAuthSession } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import type { RequestScope } from "@/types/domain";
 
 export async function getRequestScope(): Promise<RequestScope | null> {
-  return scopeFromPayload(await getCurrentSessionPayload());
+  const session = await getAuthSession();
+  if (!session) return null;
+  return {
+    role: session.role,
+    userId: session.userId,
+    canReadAll: session.role === "admin",
+    coachUserId: session.role === "pro" ? session.userId : undefined
+  };
+}
+
+export function scopeFromPayload(role: RequestScope["role"], userId: string): RequestScope {
+  return { role, userId, canReadAll: role === "admin", coachUserId: role === "pro" ? userId : undefined };
+}
+
+export function requireScope(scope: RequestScope | null): RequestScope {
+  if (!scope) {
+    throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return scope;
 }

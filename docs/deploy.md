@@ -1,83 +1,45 @@
-# Steller08 deployment
+# steller09 部署指南（Cloudflare Workers + OpenNext）
 
-## 1) Cloudflare resources
+## 1) 准备资源
+- D1: `steller09`
+- R2: `steller09-videos`, `steller09-keyframes`, `steller09-shares`, `steller09-exports`
 
-Create these resources first:
-
-- D1 database: `steller08`
-- R2 buckets:
-  - `steller08-videos`
-  - `steller08-keyframes`
-  - `steller08-shares`
-  - `steller08-exports`
-
-Apply schema:
-
+## 2) 应用 schema
 ```bash
-wrangler d1 execute steller08 --file=cloudflare/schema.sql
+wrangler d1 execute steller09 --file cloudflare/schema.sql
 ```
 
-## 2) Web app deploy
+## 3) 配置 vars
+编辑 `apps/web/wrangler.jsonc` 的 `vars`：
+- NEXT_PUBLIC_APP_URL
+- NEXT_PUBLIC_DEFAULT_LOCALE
+- NEWS_API_BASE
+- ANALYZER_BASE_URL
+- GEMINI_MODEL
+- GEMINI_API_BASE
 
-Cloudflare Pages / Workers root directory:
-
-- Root: `apps/web`
-- Build command: `npx @opennextjs/cloudflare build`
-- Deploy command: `npx @opennextjs/cloudflare deploy`
-
-Bindings expected by code:
-
-- D1: `DB`
-- R2: `VIDEOS`, `KEYFRAMES`, `SHARES`, `EXPORTS`
-
-Required vars:
-
-- `NEXT_PUBLIC_APP_URL`
-- `ANALYZER_BASE_URL`
-- `ANALYZER_TOKEN`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL`
-- `GEMINI_API_BASE`
-- `NEWS_API_BASE`
-- `AUTH_SECRET`
-
-## 3) Render analyzer deploy
-
-Service root:
-
-- `services/analyzer`
-
-Start command:
-
+## 4) 配置 secrets
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
+cd apps/web
+wrangler secret put GEMINI_API_KEY
+wrangler secret put ANALYZER_TOKEN
+wrangler secret put AUTH_SECRET
 ```
 
-Environment:
+## 5) 构建并部署
+```bash
+npm install
+npm --workspace apps/web run build
+npx @opennextjs/cloudflare build --cwd apps/web
+npx @opennextjs/cloudflare deploy --cwd apps/web
+```
 
-- `ANALYZER_TOKEN` should match Cloudflare side if you later enforce bearer auth.
 
-## 4) Runtime chain
+## 0) 部署前认证（CI / 非交互环境必需）
+在非交互环境需要预先设置：
+```bash
+export CLOUDFLARE_API_TOKEN=your_token
+```
+并确保 token 至少具备 Workers、D1、R2 的读写权限。
 
-1. Create student in `/students`
-2. Set current student
-3. Use `/upload` or `/capture`
-4. Browser performs real quick scan
-5. `/api/sessions` writes source video to `VIDEOS` and session row to D1
-6. `/api/analyze/light` writes quick result to D1
-7. `/api/analyze/deep` calls Render analyzer
-8. Deep result writes keyframe images to `KEYFRAMES`, writes structured result to D1, then stores share cards to `SHARES` when requested
-9. `/analysis/[id]`, `/history`, `/training` read only persisted data
-
-## 5) Important behavior
-
-- No fake fallback in light analysis API: it rejects requests without a real browser snapshot.
-- Deep analysis errors are surfaced back to the UI.
-- Current student is stored in cookie + local cache, and every created session uses the selected `student_id`.
-
-## 6) Auth and portals
-
-- `/login` and `/register` are the public identity entry points.
-- `role=user` enters `/app` (用户端).
-- `role=pro` enters `/pro` (Pro端 / Pro工作台).
-- D1 auth tables: `users`, `auth_sessions`, `coach_student_links`, `coach_invites`.
+此外，请把 `apps/web/wrangler.jsonc` 中的 `database_id` 从 `REPLACE_WITH_D1_DATABASE_ID` 替换为真实值。

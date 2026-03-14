@@ -1,16 +1,23 @@
-import { UploadWorkflow } from "@/components/upload/upload-workflow";
+"use client";
+import { useState } from "react";
 
-export default async function UploadPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
-  const { mode } = await searchParams;
-  const screenMode = mode === "screen";
+export default function UploadPage() {
+  const [result, setResult] = useState("");
   return (
-    <main className="page stack">
-      <section className="page-hero">
-        <span className="kicker">formal upload</span>
-        <h1 className="page-title">{screenMode ? "Screen Mode 上传" : "上传视频"}</h1>
-        <p className="subhead">上传后会先进行快速首扫，再生成正式分析结果与训练建议。</p>
-      </section>
-      <UploadWorkflow screenMode={screenMode} />
-    </main>
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        const res = await fetch("/api/media", { method: "POST", body: form });
+        setResult(JSON.stringify(await res.json(), null, 2));
+      }}
+    >
+      <h2>上传视频</h2>
+      <input name="studentId" placeholder="studentId" required />
+      <input type="file" name="file" accept="video/*" required />
+      <input name="sourceType" defaultValue="upload" />
+      <button type="submit">上传并创建 session</button>
+      <pre>{result}</pre>
+    </form>
   );
 }
