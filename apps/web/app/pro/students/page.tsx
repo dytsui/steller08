@@ -26,7 +26,7 @@ export default async function ProStudentsPage() {
           students.map((student) => (
             <Card key={student.id} className="stack">
               <div className="row-between">
-                <Link href={`/pro/students/${student.id}`}><strong>{student.name}</strong></Link>
+                <strong>{student.name}</strong>
                 <span className="badge">{student.level}</span>
               </div>
               <span className="muted">惯用手：{student.dominantHand === "left" ? "左手" : "右手"}</span>

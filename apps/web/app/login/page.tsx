@@ -22,7 +22,6 @@ export default function LoginPage() {
               <h2 className="section-title">登录</h2>
             </div>
             <LoginForm />
-            <Link href="/forgot-password" className="news-link">忘记密码</Link>
           </Card>
         </div>
       </section>

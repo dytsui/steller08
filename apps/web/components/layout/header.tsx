@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { useLocale } from "@/components/layout/use-locale";
 import { dictionaries } from "@/lib/i18n";
 import { fetchAuthSession, logoutSession } from "@/lib/services/auth";
@@ -29,6 +28,8 @@ export function Header() {
   }
 
   const isProPortal = pathname.startsWith('/pro');
+  const isUserPortal = pathname.startsWith('/app');
+  const portalHome = isProPortal ? '/pro' : session?.role === 'pro' ? '/pro' : session ? '/app' : '/';
   const nav = useMemo(() => {
     if (!session) {
       return [
@@ -43,9 +44,7 @@ export function Header() {
         ['/pro/students', dict.proStudents],
         ['/pro/upload', dict.upload],
         ['/pro/capture', dict.capture],
-        ['/pro/invites', dict.proInvites],
-        ['/pro/training', dict.training],
-        ['/pro/settings', dict.settings]
+        ['/pro/invites', dict.proInvites]
       ] as const;
     }
     return [
@@ -54,14 +53,20 @@ export function Header() {
       ['/app/upload', dict.upload],
       ['/app/history', dict.history],
       ['/app/training', dict.training],
-      ['/app/profile', dict.profile]
+      ['/app/students', dict.profile]
     ] as const;
   }, [session, isProPortal, dict]);
 
   return (
     <header className="header">
       <div className="header-inner">
-        <BrandLogo href="/" ariaLabel="Homepage" />
+        <Link href={portalHome} className="brand-shell" aria-label="Steller08 home">
+          <span className="brand-mark" />
+          <span className="brand-copy">
+            <span className="brand-title">Steller08</span>
+            <span className="brand-subtitle">Golf swing improvement platform</span>
+          </span>
+        </Link>
 
         <nav className="top-nav">
           {nav.map(([href, label]: readonly [string, string]) => (
@@ -73,14 +78,14 @@ export function Header() {
 
         <div className="header-tools">
           {currentStudent && !isProPortal ? (
-            <Link href="/app/profile" className="quick-link">
+            <Link href="/app/students" className="quick-link">
               {dict.currentStudent}
               <strong>{currentStudent.name}</strong>
             </Link>
           ) : null}
           {session ? (
             <>
-              <Link href={isProPortal || session.role === 'pro' ? '/pro' : '/app'} className="quick-link">
+              <Link href={portalHome} className="quick-link">
                 {dict.currentPortal}
                 <strong>{session.role === "pro" ? dict.proLabel : dict.userLabel}</strong>
               </Link>

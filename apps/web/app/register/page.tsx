@@ -13,7 +13,6 @@ export default function RegisterPage() {
             <p className="subhead">先完成注册，再进入角色分流门户。用户端面向训练者，Pro端面向教练、工作室、练习场与机构。</p>
             <div className="hero-actions">
               <Link href="/login"><span className="button button-neutral">已有账号去登录</span></Link>
-              <Link href="/forgot-password"><span className="button button-neutral">忘记密码</span></Link>
             </div>
           </div>
           <Card className="stack auth-card">

@@ -1,25 +1,13 @@
-import { getEnv } from '@/lib/cloudflare';
-import type { AnalysisResult, GrowthPoint, SessionRecord, Student } from '@/lib/types';
-import type { RequestScope } from '@/lib/scope';
+import { getEnv } from "@/lib/cloudflare";
+import type { AnalysisResult, GrowthPoint, SessionRecord, Student } from "@/lib/types";
 
 function db() {
   return getEnv().DB;
 }
 
 type StudentRow = Student & { userId?: string | null; coachUserId?: string | null };
-type SessionRow = SessionRecord & {
-  title?: string | null;
-  previewKey?: string | null;
-  screenMode?: number | null;
-  lightScore?: number | null;
-  finalScore?: number | null;
-  tempoRatio?: number | null;
-  durationMs?: number | null;
-  sourceWidth?: number | null;
-  sourceHeight?: number | null;
-  errorMessage?: string | null;
-  completedAt?: string | null;
-};
+
+type Scope = { role: "user" | "pro" | "admin"; userId: string };
 
 function mapStudent(row: any): Student {
   return {
@@ -28,47 +16,23 @@ function mapStudent(row: any): Student {
     dominantHand: row.dominantHand,
     level: row.level,
     handicap: Number(row.handicap ?? 0),
-    notes: row.notes ?? '',
+    notes: row.notes ?? "",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   };
 }
 
-function mapSession(row: any): SessionRow {
-  return {
-    id: row.id,
-    studentId: row.studentId,
-    sourceType: row.sourceType,
-    status: row.status,
-    videoKey: row.videoKey,
-    shareKey: row.shareKey ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    title: row.title ?? null,
-    previewKey: row.previewKey ?? null,
-    screenMode: Number(row.screenMode ?? 0),
-    lightScore: row.lightScore === null || row.lightScore === undefined ? null : Number(row.lightScore),
-    finalScore: row.finalScore === null || row.finalScore === undefined ? null : Number(row.finalScore),
-    tempoRatio: row.tempoRatio === null || row.tempoRatio === undefined ? null : Number(row.tempoRatio),
-    durationMs: row.durationMs === null || row.durationMs === undefined ? null : Number(row.durationMs),
-    sourceWidth: row.sourceWidth === null || row.sourceWidth === undefined ? null : Number(row.sourceWidth),
-    sourceHeight: row.sourceHeight === null || row.sourceHeight === undefined ? null : Number(row.sourceHeight),
-    errorMessage: row.errorMessage ?? null,
-    completedAt: row.completedAt ?? null
-  };
-}
-
-export async function listStudents(scope?: RequestScope): Promise<Student[]> {
+export async function listStudents(scope?: Scope): Promise<Student[]> {
   let sql = `
     SELECT id, user_id as userId, coach_user_id as coachUserId, name,
            dominant_hand as dominantHand, level, handicap, notes,
            created_at as createdAt, updated_at as updatedAt
     FROM students`;
   const binds: string[] = [];
-  if (scope?.role === 'user') {
+  if (scope?.role === "user") {
     sql += ` WHERE user_id = ?1`;
     binds.push(scope.userId);
-  } else if (scope?.role === 'pro') {
+  } else if (scope?.role === "pro") {
     sql += ` WHERE coach_user_id = ?1`;
     binds.push(scope.userId);
   }
@@ -97,12 +61,12 @@ export async function getStudentWithOwnership(id: string): Promise<StudentRow | 
   return (row ?? null) as StudentRow | null;
 }
 
-export async function getStudentForScope(id: string, scope?: RequestScope): Promise<Student | null> {
+export async function getStudentForScope(id: string, scope?: Scope): Promise<Student | null> {
   const row = await getStudentWithOwnership(id);
   if (!row) return null;
-  if (!scope || scope.role === 'admin') return mapStudent(row);
-  if (scope.role === 'user' && row.userId === scope.userId) return mapStudent(row);
-  if (scope.role === 'pro' && row.coachUserId === scope.userId) return mapStudent(row);
+  if (!scope || scope.role === "admin") return mapStudent(row);
+  if (scope.role === "user" && row.userId === scope.userId) return mapStudent(row);
+  if (scope.role === "pro" && row.coachUserId === scope.userId) return mapStudent(row);
   return null;
 }
 
@@ -143,41 +107,25 @@ export async function upsertStudent(student: Student & { userId?: string | null;
   ).run();
 }
 
-export async function createSession(
-  session: SessionRecord & {
-    title?: string | null;
-    screenMode?: boolean;
-    durationMs?: number | null;
-    sourceWidth?: number | null;
-    sourceHeight?: number | null;
-  }
-): Promise<void> {
+export async function createSession(session: SessionRecord): Promise<void> {
   await db().prepare(`
-    INSERT INTO sessions (
-      id, student_id, source_type, status, title, video_key, share_key,
-      screen_mode, duration_ms, source_width, source_height, created_at, updated_at
-    )
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+    INSERT INTO sessions (id, student_id, source_type, status, video_key, share_key, created_at, updated_at)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
   `).bind(
     session.id,
     session.studentId,
     session.sourceType,
     session.status,
-    session.title ?? null,
     session.videoKey,
     session.shareKey,
-    session.screenMode ? 1 : 0,
-    session.durationMs ?? null,
-    session.sourceWidth ?? null,
-    session.sourceHeight ?? null,
     session.createdAt,
     session.updatedAt
   ).run();
 }
 
-export async function updateSessionStatus(id: string, status: string, errorMessage?: string | null): Promise<void> {
-  await db().prepare(`UPDATE sessions SET status = ?1, error_message = ?2, updated_at = ?3 WHERE id = ?4`)
-    .bind(status, errorMessage ?? null, new Date().toISOString(), id)
+export async function updateSessionStatus(id: string, status: string): Promise<void> {
+  await db().prepare(`UPDATE sessions SET status = ?1, updated_at = ?2 WHERE id = ?3`)
+    .bind(status, new Date().toISOString(), id)
     .run();
 }
 
@@ -187,73 +135,23 @@ export async function updateSessionShareKey(id: string, shareKey: string): Promi
     .run();
 }
 
-export async function updateSessionLightSummary(input: {
-  sessionId: string;
-  score: number;
-  tempoRatio: number;
-  durationMs?: number;
-}) {
-  await db().prepare(`
-    UPDATE sessions
-    SET light_score = ?1,
-        tempo_ratio = ?2,
-        duration_ms = COALESCE(?3, duration_ms),
-        status = 'analyzing-light',
-        error_message = NULL,
-        updated_at = ?4
-    WHERE id = ?5
-  `).bind(input.score, input.tempoRatio, input.durationMs ?? null, new Date().toISOString(), input.sessionId).run();
-}
-
-export async function markSessionCompleted(input: {
-  sessionId: string;
-  score: number;
-  tempoRatio: number;
-  durationMs?: number;
-}) {
-  const now = new Date().toISOString();
-  await db().prepare(`
-    UPDATE sessions
-    SET final_score = ?1,
-        tempo_ratio = ?2,
-        duration_ms = COALESCE(?3, duration_ms),
-        status = 'completed',
-        error_message = NULL,
-        updated_at = ?4,
-        completed_at = ?4
-    WHERE id = ?5
-  `).bind(input.score, input.tempoRatio, input.durationMs ?? null, now, input.sessionId).run();
-}
-
-export async function markSessionFailed(sessionId: string, message: string) {
-  await db().prepare(`
-    UPDATE sessions
-    SET status = 'failed', error_message = ?1, updated_at = ?2
-    WHERE id = ?3
-  `).bind(message.slice(0, 500), new Date().toISOString(), sessionId).run();
-}
-
-export async function getSession(id: string): Promise<SessionRow | null> {
+export async function getSession(id: string): Promise<SessionRecord | null> {
   const row = await db().prepare(`
-    SELECT id, student_id as studentId, source_type as sourceType, status, title,
-           video_key as videoKey, preview_key as previewKey, share_key as shareKey,
-           screen_mode as screenMode, light_score as lightScore, final_score as finalScore,
-           tempo_ratio as tempoRatio, duration_ms as durationMs, source_width as sourceWidth,
-           source_height as sourceHeight, error_message as errorMessage,
-           created_at as createdAt, updated_at as updatedAt, completed_at as completedAt
+    SELECT id, student_id as studentId, source_type as sourceType, status, video_key as videoKey,
+           share_key as shareKey, created_at as createdAt, updated_at as updatedAt
     FROM sessions WHERE id = ?1 LIMIT 1
   `).bind(id).first();
-  return row ? mapSession(row) : null;
+  return (row ?? null) as SessionRecord | null;
 }
 
-export async function getSessionForScope(id: string, scope?: RequestScope): Promise<SessionRow | null> {
+export async function getSessionForScope(id: string, scope?: Scope): Promise<SessionRecord | null> {
   const session = await getSession(id);
   if (!session) return null;
   const student = await getStudentWithOwnership(session.studentId);
   if (!student) return null;
-  if (!scope || scope.role === 'admin') return session;
-  if (scope.role === 'user' && student.userId === scope.userId) return session;
-  if (scope.role === 'pro' && student.coachUserId === scope.userId) return session;
+  if (!scope || scope.role === "admin") return session;
+  if (scope.role === "user" && student.userId === scope.userId) return session;
+  if (scope.role === "pro" && student.coachUserId === scope.userId) return session;
   return null;
 }
 
@@ -296,7 +194,8 @@ export async function writeAnalysis(result: AnalysisResult): Promise<void> {
     db().prepare(`DELETE FROM reports WHERE session_id = ?1`).bind(result.sessionId),
     db().prepare(`DELETE FROM training_plans WHERE session_id = ?1`).bind(result.sessionId),
     db().prepare(`DELETE FROM metrics WHERE session_id = ?1`).bind(result.sessionId),
-    db().prepare(`UPDATE sessions SET updated_at = ?1 WHERE id = ?2`).bind(now, result.sessionId)
+    db().prepare(`UPDATE sessions SET status = ?1, updated_at = ?2, completed_at = CASE WHEN ?1 = 'completed' THEN ?2 ELSE completed_at END WHERE id = ?3`)
+      .bind(result.mode === 'deep' ? 'completed' : 'analyzing-light', now, result.sessionId)
   ]);
 
   for (const frame of result.keyframes) {
@@ -347,14 +246,14 @@ export async function writeAnalysis(result: AnalysisResult): Promise<void> {
   ]);
 
   for (const plan of result.trainingPlanZh) {
-    await db().prepare(`INSERT INTO training_plans (session_id, student_id, plan_zh) VALUES (?1, ?2, ?3)`)
-      .bind(result.sessionId, result.studentId, plan)
+    await db().prepare(`INSERT INTO training_plans (session_id, plan_zh) VALUES (?1, ?2)`)
+      .bind(result.sessionId, plan)
       .run();
   }
 
   for (const plan of result.trainingPlanEn) {
-    await db().prepare(`INSERT INTO training_plans (session_id, student_id, plan_en) VALUES (?1, ?2, ?3)`)
-      .bind(result.sessionId, result.studentId, plan)
+    await db().prepare(`INSERT INTO training_plans (session_id, plan_en) VALUES (?1, ?2)`)
+      .bind(result.sessionId, plan)
       .run();
   }
 }
@@ -401,14 +300,9 @@ export async function getAnalysis(sessionId: string): Promise<AnalysisResult | n
   };
 }
 
-export async function listHistory(studentId?: string, scope?: RequestScope): Promise<Array<SessionRow & { score: number | null; studentName?: string | null }>> {
-  let sql = `SELECT s.id, s.student_id as studentId, s.source_type as sourceType, s.status, s.title,
-         s.video_key as videoKey, s.preview_key as previewKey, s.share_key as shareKey,
-         s.screen_mode as screenMode, s.light_score as lightScore, s.final_score as finalScore,
-         s.tempo_ratio as tempoRatio, s.duration_ms as durationMs, s.source_width as sourceWidth,
-         s.source_height as sourceHeight, s.error_message as errorMessage,
-         s.created_at as createdAt, s.updated_at as updatedAt, s.completed_at as completedAt,
-         COALESCE(a.score, s.final_score, s.light_score) as score, st.name as studentName
+export async function listHistory(studentId?: string, scope?: Scope): Promise<Array<SessionRecord & { score: number | null; studentName?: string | null }>> {
+  let sql = `SELECT s.id, s.student_id as studentId, s.source_type as sourceType, s.status, s.video_key as videoKey, s.share_key as shareKey,
+         s.created_at as createdAt, s.updated_at as updatedAt, COALESCE(a.score, s.light_score, s.final_score) as score, st.name as studentName
        FROM sessions s
        JOIN students st ON st.id = s.student_id
        LEFT JOIN analysis_results a ON a.session_id = s.id`;
@@ -429,10 +323,10 @@ export async function listHistory(studentId?: string, scope?: RequestScope): Pro
   sql += ` ORDER BY s.created_at DESC`;
   const stmt = db().prepare(sql);
   const result = binds.length ? await stmt.bind(...binds).all() : await stmt.all();
-  return (result.results ?? []).map((row: any) => ({ ...mapSession(row), score: row.score === null || row.score === undefined ? null : Number(row.score), studentName: row.studentName ?? null }));
+  return (result.results ?? []) as Array<SessionRecord & { score: number | null; studentName?: string | null }>;
 }
 
-export async function getGrowth(studentId: string, scope?: RequestScope): Promise<GrowthPoint[]> {
+export async function getGrowth(studentId: string, scope?: Scope): Promise<GrowthPoint[]> {
   const student = await getStudentForScope(studentId, scope);
   if (!student) return [];
   const result = await db().prepare(`

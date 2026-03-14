@@ -1,7 +1,4 @@
-"use client";
-
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { enrichIssue } from '@/lib/training';
 import { getDrillCatalogItem } from '@/lib/catalogs/drill-catalog';
@@ -12,8 +9,6 @@ function phaseZh(phase: string) {
 }
 
 export function IssueDetail({ analysis, sessionId, issueCode }: { analysis: AnalysisResult; sessionId: string; issueCode: string }) {
-  const pathname = usePathname();
-  const basePath = pathname.startsWith('/pro') ? `/pro/analysis/${sessionId}` : pathname.startsWith('/app') ? `/app/analysis/${sessionId}` : `/analysis/${sessionId}`;
   const issue = analysis.issues.map(enrichIssue).find((item) => item.code === issueCode);
 
   if (!issue) {
@@ -23,7 +18,7 @@ export function IssueDetail({ analysis, sessionId, issueCode }: { analysis: Anal
           <div className="empty-state">
             <strong>找不到这个问题</strong>
             <span>可能该 session 还未完成正式分析，或这个 issue code 不在当前结果里。</span>
-            <Link href={`${basePath}/issues`} className="button button-neutral">返回问题列表</Link>
+            <Link href={`/analysis/${sessionId}/issues`} className="button button-neutral">返回问题列表</Link>
           </div>
         </Card>
       </main>
@@ -39,8 +34,8 @@ export function IssueDetail({ analysis, sessionId, issueCode }: { analysis: Anal
         <h1 className="page-title">{issue.titleZh}</h1>
         <p className="subhead">阶段：{phaseZh(issue.phase)} · 严重度：{issue.severity}</p>
         <div className="action-strip">
-          <Link href={basePath} className="button button-neutral">返回分析总览</Link>
-          <Link href={`${basePath}/issues`} className="button button-neutral">返回问题列表</Link>
+          <Link href={`/analysis/${sessionId}`} className="button button-neutral">返回分析总览</Link>
+          <Link href={`/analysis/${sessionId}/issues`} className="button button-neutral">返回问题列表</Link>
         </div>
       </section>
 
