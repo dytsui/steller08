@@ -135,6 +135,53 @@ export async function updateSessionShareKey(id: string, shareKey: string): Promi
     .run();
 }
 
+export async function updateSessionLightSummary(input: {
+  sessionId: string;
+  score: number;
+  tempoRatio: number;
+  durationMs?: number;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  await db().prepare(`
+    UPDATE sessions
+    SET light_score = ?1,
+        tempo_ratio = ?2,
+        duration_ms = COALESCE(?3, duration_ms),
+        updated_at = ?4
+    WHERE id = ?5
+  `).bind(input.score, input.tempoRatio, input.durationMs ?? null, now, input.sessionId).run();
+}
+
+export async function markSessionCompleted(input: {
+  sessionId: string;
+  score: number;
+  tempoRatio: number;
+  durationMs?: number;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  await db().prepare(`
+    UPDATE sessions
+    SET status = 'completed',
+        final_score = ?1,
+        tempo_ratio = ?2,
+        duration_ms = COALESCE(?3, duration_ms),
+        error_message = NULL,
+        completed_at = ?4,
+        updated_at = ?4
+    WHERE id = ?5
+  `).bind(input.score, input.tempoRatio, input.durationMs ?? null, now, input.sessionId).run();
+}
+
+export async function markSessionFailed(sessionId: string, errorMessage: string): Promise<void> {
+  await db().prepare(`
+    UPDATE sessions
+    SET status = 'failed',
+        error_message = ?1,
+        updated_at = ?2
+    WHERE id = ?3
+  `).bind(errorMessage, new Date().toISOString(), sessionId).run();
+}
+
 export async function getSession(id: string): Promise<SessionRecord | null> {
   const row = await db().prepare(`
     SELECT id, student_id as studentId, source_type as sourceType, status, video_key as videoKey,

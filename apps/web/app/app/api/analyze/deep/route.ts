@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { callDeepAnalyzer } from '@/lib/analyzer';
 import { getSessionForScope, markSessionCompleted, markSessionFailed, updateSessionStatus, writeAnalysis } from '@/lib/d1';
 import { generateReport } from '@/lib/report';
-import { makeKeyframeKey, readMedia, uploadMedia } from '@/lib/r2';
+import { getEnv } from '@/lib/cloudflare';
+import { makeKeyframeKey, uploadMedia } from '@/lib/r2';
 import { getRequestScope } from '@/lib/scope';
 
 export async function POST(request: Request) {
@@ -18,21 +19,14 @@ export async function POST(request: Request) {
   await updateSessionStatus(session.id, 'analyzing-deep');
 
   try {
-    const source = await readMedia('VIDEOS', session.videoKey);
-    if (!source) {
-      await markSessionFailed(session.id, 'video_not_found');
-      return NextResponse.json({ error: 'video_not_found' }, { status: 404 });
-    }
-
-    const contentType = (source as any).httpMetadata?.contentType || 'video/mp4';
-    const fileBuffer = await source.arrayBuffer();
+    const env = getEnv();
+    const videoUrl = `${env.NEXT_PUBLIC_APP_URL}/api/media?bucket=VIDEOS&key=${encodeURIComponent(session.videoKey)}`;
 
     const result = await callDeepAnalyzer({
       sessionId: session.id,
       studentId: session.studentId,
       sourceType: session.sourceType,
-      file: fileBuffer,
-      contentType,
+      videoUrl,
       fileName: session.videoKey.split('/').at(-1) || 'video.mp4'
     });
 
@@ -58,7 +52,7 @@ export async function POST(request: Request) {
       sessionId: session.id,
       score: result.score,
       tempoRatio: result.tempoRatio,
-      durationMs: session.durationMs ?? undefined
+      durationMs: (session as any).durationMs ?? undefined
     });
     return NextResponse.json({ result });
   } catch (error) {
