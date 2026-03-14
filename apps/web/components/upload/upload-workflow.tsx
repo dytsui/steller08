@@ -8,7 +8,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import type { AnalysisSource, Student } from '@/lib/types';
 import { getCurrentStudentId, setCurrentStudentId, subscribeCurrentStudent } from '@/lib/current-student';
 import { runVideoQuickScan } from '@/lib/client/video-quick-scan';
-import { analysisPathForPortal } from '@/lib/scope';
+import { analysisPathForPortal } from '@/lib/portal-paths';
 
 const screenHints = ['完整拍入屏幕边框', '减少环境反光', '别让拍摄设备晃动', '保证人物挥杆区域完整可见'];
 

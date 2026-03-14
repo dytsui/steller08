@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { cookies } from 'next/headers';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { getEnv } from '@/lib/cloudflare';
@@ -30,7 +32,9 @@ export function parseSessionCookie(raw?: string | null): AuthSessionPayload | nu
 export async function sha256(input: string) {
   const encoded = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest('SHA-256', encoded);
-  return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export async function hashPassword(password: string) {
@@ -61,7 +65,9 @@ async function validateSessionPayload(payload: AuthSessionPayload | null) {
     JOIN users u ON u.id = s.user_id
     WHERE s.user_id = ?1 AND s.token_hash = ?2
     LIMIT 1
-  `).bind(payload.userId, tokenHash).first();
+  `)
+    .bind(payload.userId, tokenHash)
+    .first();
 
   if (!row) return null;
   if (row.status !== 'active') return null;

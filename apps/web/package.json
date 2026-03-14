@@ -1,6 +1,5 @@
 {
-  "name": "steller08-web",
-  "private": true,
+    "private": true,
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev --webpack",

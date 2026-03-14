@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { getCurrentStudentId, setCurrentStudentId, subscribeCurrentStudent } from '@/lib/current-student';
-import { analysisPathForPortal } from '@/lib/scope';
+import { analysisPathForPortal } from '@/lib/portal-paths';
 
 export function TrainingBoard() {
   const pathname = usePathname();

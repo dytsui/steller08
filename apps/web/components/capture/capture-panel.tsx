@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useCameraAnalysis } from '@/hooks/use-camera-analysis';
 import { getCurrentStudentId, setCurrentStudentId } from '@/lib/current-student';
-import { analysisPathForPortal } from '@/lib/scope';
+import { analysisPathForPortal } from '@/lib/portal-paths';
 import type { AnalysisSource } from '@/lib/types';
 
 function toSourceType(screenMode: boolean): AnalysisSource {

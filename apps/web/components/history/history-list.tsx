@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { fmtDate } from '@/lib/utils';
 import { getCurrentStudentId, subscribeCurrentStudent } from '@/lib/current-student';
-import { analysisPathForPortal } from '@/lib/scope';
+import { analysisPathForPortal } from '@/lib/portal-paths';
 
 const sourceLabels: Record<string, string> = {
   camera: '普通实拍',
