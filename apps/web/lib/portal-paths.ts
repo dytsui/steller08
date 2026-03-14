@@ -4,7 +4,7 @@ export function portalFromRole(role: string | null | undefined) {
 
 export function analysisPathForPortal(
   portal: 'app' | 'pro' | 'public',
-  sessionId: string
+  sessionId: string,
 ) {
   if (portal === 'pro') return `/pro/analysis/${sessionId}`;
   if (portal === 'app') return `/app/analysis/${sessionId}`;
